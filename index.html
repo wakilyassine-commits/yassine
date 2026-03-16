@@ -3,8 +3,32 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Business English — Révision Vocab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LexiPro — Business English</title>
+
+<!-- ===== PWA ===== -->
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LexiPro">
+
+<!-- Apple Touch Icons -->
+
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+
+<!-- Favicon -->
+
+<link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96x96.png">
+
+<!-- SEO / Description -->
+
+<meta name="description" content="Révisez votre vocabulaire Business English avec flashcards et quiz interactifs — fonctionne hors ligne">
+
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -499,6 +523,74 @@ transition: all 0.2s;
 
 .tts-quiz-btn:hover { background: rgba(79,255,176,0.14); }
 .tts-quiz-btn.speaking { animation: pulse-tts 1s ease-in-out infinite; }
+
+/* ===== PWA Install Banner ===== */
+#installBanner {
+position: fixed;
+bottom: -100px;
+left: 50%;
+transform: translateX(-50%);
+width: calc(100% - 32px);
+max-width: 500px;
+background: var(–surface2);
+border: 1px solid rgba(79,255,176,0.3);
+border-radius: 14px;
+padding: 16px 18px;
+display: flex;
+align-items: center;
+gap: 14px;
+z-index: 9999;
+transition: bottom 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#installBanner.show { bottom: 24px; }
+
+#installBanner img {
+width: 44px;
+height: 44px;
+border-radius: 10px;
+flex-shrink: 0;
+}
+
+.install-text { flex: 1; }
+.install-text strong { display: block; font-size: 14px; color: var(–text); margin-bottom: 2px; }
+.install-text span { font-size: 12px; color: var(–text-muted); }
+
+#installBtn {
+padding: 8px 16px;
+background: var(–accent);
+color: var(–bg);
+border: none;
+border-radius: 8px;
+font-family: ‘DM Sans’, sans-serif;
+font-size: 13px;
+font-weight: 600;
+cursor: pointer;
+white-space: nowrap;
+flex-shrink: 0;
+transition: opacity 0.2s;
+}
+
+#installBtn:hover { opacity: 0.85; }
+
+#dismissInstall {
+background: none;
+border: none;
+color: var(–text-dim);
+font-size: 18px;
+cursor: pointer;
+padding: 4px;
+flex-shrink: 0;
+line-height: 1;
+}
+
+#dismissInstall:hover { color: var(–text-muted); }
+
+/* Safe area for PWA on iPhone */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+.app { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+}
 
 /* Responsive */
 @media (max-width: 600px) {
@@ -1001,7 +1093,60 @@ function updateProgress(cur, total) {
 
 // Init
 renderCard();
+
+// ===== PWA : Service Worker =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[LexiPro] SW enregistré :', reg.scope))
+      .catch(err => console.warn('[LexiPro] SW échec :', err));
+  });
+}
+
+// ===== PWA : Bannière d'installation =====
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+const installBtn = document.getElementById('installBtn');
+const dismissBtn = document.getElementById('dismissInstall');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBanner) installBanner.classList.add('show');
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBanner.classList.remove('show');
+  });
+}
+
+if (dismissBtn) {
+  dismissBtn.addEventListener('click', () => {
+    installBanner.classList.remove('show');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('[LexiPro] App installée avec succès !');
+  if (installBanner) installBanner.classList.remove('show');
+});
 </script>
 
+<!-- PWA Install Banner -->
+
+<div id="installBanner">
+  <img src="icons/icon-96x96.png" alt="LexiPro icon">
+  <div class="install-text">
+    <strong>Installer LexiPro</strong>
+    <span>Accès rapide + mode hors ligne</span>
+  </div>
+  <button id="installBtn">Installer</button>
+  <button id="dismissInstall" title="Fermer">✕</button>
+</div>
 </body>
 </html>
